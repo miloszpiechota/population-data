@@ -1,0 +1,92 @@
+---
+title: "Population Data - Spain and United Arab Emiartes"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    source_code: embed
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(googlesheets4)
+
+
+```
+
+DATA SET {data-icon="fa-list"}
+=====================================
+
+**Population Data - ES + UAE** Data Set.
+
+Column {data-width=300}
+-----------------------------------------------------------------------
+
+### Data Set Basic Information
+
+This dataset contains artificially generated data on the population of two countries: **Spain (ES)** and the **United Arab Emirates (UAE)**. The data has been curated to analyze trends and insights related to various demographic characteristics, including age, gender, or BMI. It is specifically focused on understanding the ...
+
+The dataset includes variables such as:
+- **height**: 
+- **weight**: 
+- **sex**: 
+- **year**: 
+- **age**: 
+- **education**: 
+- **bmi**: 
+
+### Aims 
+
+This dataset aims to explore the correlation between vaccination rates, age, and other demographic factors, allowing for a better understanding of the vaccination trends in Spain and the UAE. The intention is to investigate how these countries are progressing with their vaccination campaigns and whether there are observable differences based on demographic variables.
+
+The data comes from a combination of publicly available research and artificial data generation, and serves as a basis for comparing vaccination uptake in two regions with distinct demographic and cultural contexts.
+
+
+
+
+Column {data-width=400}
+-----------------------------------------------------------------------
+### Data Set
+
+
+```{r}
+library(DT)
+library(tidyverse)
+library(flexdashboard)
+library(ggplot2)
+
+ES_UAE_sheet_id<- "1MPRhaBzMiVvIzX3NQJhgDvrtRi5mVChwExsJNsNU8gI"
+ES_UAE_sheet_name <- "Data_ES_ZEA"
+
+ES_UAE_data <- read_sheet(ES_UAE_sheet_id, sheet = ES_UAE_sheet_name)
+ES_UAE_data %>%
+  DT::datatable(rownames = FALSE, options=list(pageLength=15))
+```
+
+ Pair Plot {data-icon="fa-list"}
+=====================================
+Column {data-width=1000}
+-----------------------------------------------------------------------
+
+``` {r}
+library(GGally)
+ES_UAE_sheet_id<- "1MPRhaBzMiVvIzX3NQJhgDvrtRi5mVChwExsJNsNU8gI"
+ES_UAE_sheet_name <- "Data_ES_ZEA"
+
+ES_UAE_data <- read_sheet(ES_UAE_sheet_id, sheet = ES_UAE_sheet_name)
+ES_UAE_data %>%
+  select(height, weight, sex, age, year) %>%  # Wybieramy tylko odpowiednie kolumny
+  DT::datatable(rownames = FALSE, options = list(pageLength = 30))
+```
+Column {data-width=600}
+-----------------------------------------------------------------------
+
+
+``` {r}
+library(GGally)
+
+# Wybieramy interesujące nas zmienne numeryczne: height, weight, age, year
+ggpairs(ES_UAE_data[, c("height", "weight", "age", "year")],
+        title = "Pair Plot for Numerical Variables: Height, Weight, Age, and Year",
+        aes(color = "blue", alpha = 0.5))  # Opcje stylu
+```
