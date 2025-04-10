@@ -6,6 +6,7 @@ library(ggplot2)
 library(ggridges)
 library(tidyverse)
 
+
 # Generating data: 1000 observations
 n <- 1000
 
@@ -224,10 +225,10 @@ uae_database <- function(n, seed = NULL){
 
 # --------- GENEROWANIE DANYCH DLA HISZPANII ---------
 
-ES <- es_database(n, seed = 314592)
+#ES <- es_database(n, seed = 314592)
 
 # Podgląd pierwszych kilku wierszy danych dla Hiszpanii
-head(ES)
+#head(ES)
 
 
 
@@ -245,10 +246,10 @@ head(ES)
 
 # --------- GENEROWANIE DANYCH DLA ZEA ---------
 
- UAE <- uae_database(n, seed = 314592)
+# UAE <- uae_database(n, seed = 314592)
 
 # Podgląd pierwszych kilku wierszy danych dla Zjednoczonych Emiratów Arabskich
-head(UAE)
+#head(UAE)
 
 # Zapisanie danych do pliku CSV
 #write.csv(UAE, file = "UAE_database.csv", row.names = FALSE)
@@ -264,10 +265,10 @@ ES_UAE_sheet_name <- "Data_ES_ZEA"
 # ----- Dodawanie utworzonych danych do wspólnego arkusza ----------
 
 # Łączenie nowych danych 
-merged_data <- bind_rows(ES, UAE)
+#merged_data <- bind_rows(ES, UAE)
 
 # Zapisanie połączonych danych do wspólnego
-range_write(ES_UAE_sheet_id, data = merged_data, sheet = ES_UAE_sheet_name, col_names = TRUE)
+#range_write(ES_UAE_sheet_id, data = merged_data, sheet = ES_UAE_sheet_name, col_names = TRUE)
 
 
 # ----- Czytanie danych z arkusza ----------
@@ -275,17 +276,20 @@ range_write(ES_UAE_sheet_id, data = merged_data, sheet = ES_UAE_sheet_name, col_
 ES_UAE_data <- read_sheet(ES_UAE_sheet_id, sheet = ES_UAE_sheet_name)
 
 # -----------------------------------------------------------------
+
 # --- PLOTS FOR ES & UAE
+
+
 # **1. Age Histogram**
 
-ggplot(dane_ES_ZEA, aes(x = age, fill = country)) +
+ggplot(ES_UAE_data, aes(x = age, fill = country)) +
   geom_histogram(binwidth = 5, alpha = 0.7, position = "identity") +
   labs(title = "Age Distribution in Spain and UAE", x = "Age", y = "Number of People") +
   theme_minimal()
 
 # **2. Scatter plot BMI vs Age**
 
-ggplot(dane_ES_ZEA, aes(x = age, y = bmi, color = country)) +
+ggplot(ES_UAE_data, aes(x = age, y = bmi, color = country)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm", se = FALSE, color = "black") +
   labs(title = "BMI vs Age", x = "Age", y = "BMI") +
@@ -293,39 +297,49 @@ ggplot(dane_ES_ZEA, aes(x = age, y = bmi, color = country)) +
 
 # **3. Boxplot of Height by Gender**
 
-ggplot(dane_ES_ZEA, aes(x = as.factor(sex), y = height, fill = country)) +
+ggplot(ES_UAE_data, aes(x = as.factor(sex), y = height, fill = country)) +
   geom_boxplot() +
   scale_x_discrete(labels = c("Female", "Male")) +
   labs(title = "Height by Gender and Country", x = "Gender", y = "Height (cm)") +
   theme_minimal()
 
-# **4. Bar Plot of Citizenship in Spain**
 
-ggplot(filter(dane_ES_ZEA, country == "ES"), aes(x = citizenship, fill = citizenship)) +
-  geom_bar() +
-  labs(title = "Citizenship Distribution in Spain", x = "Citizenship", y = "Number of People") +
-  theme_minimal()
+# **4. Scatter Plot of Weight by Gender**
+ggplot(ES_UAE_data, aes(x = weight, fill = factor(sex))) +
+  geom_histogram(position = "identity", alpha = 0.6, binwidth = 2, color = "gray40") +
+  scale_fill_manual(values = c("red", "blue"), labels = c("Kobiety (0)", "Mężczyźni (1)")) +
+  labs(title = "Rozkład wagi według płci",
+       subtitle = "Z dokładniejszą skalą liczby osób",
+       x = "Waga (kg)",
+       y = "Liczba osób",
+       fill = "Płeć") +
+  theme_minimal() +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 6)) +  # Kontrola podziałek na osi Y
+  coord_cartesian(ylim = c(0, max(table(cut(ES_UAE_data$weight, breaks = 30))) * 0.6)) +  # Ograniczenie skali Y
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 6)) +  # Kontrola podziałek na osi X
+  coord_cartesian(xlim = c(0, max(table(cut(ES_UAE_data$height, breaks = 30))) * 0.6))  # Ograniczenie skali X
+
 
 
 # --- PLOTS FOR ES ---
 # **1. Scatter Plot of Height vs Weight**
 
-plot(dta$height, dta$weight,
+plot(filter(ES_UAE_data, country == "ES")$height, filter(ES_UAE_data, country == "ES")$weight,
      main = "Height vs Weight",
      xlab = "Height (cm)",
      ylab = "Weight (kg)",
-     col = ifelse(dta$sex == "1", "blue", "red"),
+     col = ifelse(filter(ES_UAE_data, country == "ES")$sex == "1", "blue", "red"),
      pch = 16)
 legend("topleft", legend = c("Male", "Female"), col = c("blue", "red"), pch = 16)
 
 # **2. Pair Plot for Numerical Variables: Height, Weight, Age, and Year**
 
-pairs(dta[, c("height", "weight", "age", "year")],
+pairs(filter(ES_UAE_data, country == "ES")[, c("height", "weight", "age", "year")],
       main = "Pair Plot for Numerical Variables")
 
 # **3. Boxplot of Height by Education Level**
 
-boxplot(height ~ education, data = dta,
+boxplot(height ~ education, data = filter(ES_UAE_data, country == "ES"),
         main = "Height Distribution by Education Level",
         xlab = "Education",
         ylab = "Height (cm)",
@@ -333,7 +347,7 @@ boxplot(height ~ education, data = dta,
 
 # **4. Bar Plot of Average Weight by Gender**
 
-avg_weight <- tapply(dta$weight, dta$sex, mean)
+avg_weight <- tapply(filter(ES_UAE_data, country == "ES")$weight, filter(ES_UAE_data, country == "ES")$sex, mean)
 barplot(avg_weight,
         main = "Average Weight by Gender",
         xlab = "Gender",
@@ -343,7 +357,7 @@ barplot(avg_weight,
 
 # **5. Scatter Plot of Weight by Gender**
 
-plot(dta$sex, dta$weight,
+plot(filter(ES_UAE_data, country == "ES")$sex, filter(ES_UAE_data, country == "ES")$weight,
      main = "Weight by Gender",
      xlab = "Gender",
      ylab = "Weight (kg)",
@@ -352,14 +366,14 @@ plot(dta$sex, dta$weight,
 
 # **6. Age Histogram**
 
-hist(dta$age, breaks = 20,
+hist(filter(ES_UAE_data, country == "ES")$age, breaks = 20,
      main = "Age Distribution",
      xlab = "Age",
      col = "lightgreen")
 
 # **7. Bar Plot of Education Category Counts**
 
-education_counts <- table(dta$education)
+education_counts <- table(filter(ES_UAE_data, country == "ES")$education)
 barplot(education_counts,
         main = "Counts by Education Category",
         xlab = "Education",
@@ -368,76 +382,4 @@ barplot(education_counts,
 
 # --- PLOTS FOR UAE ---
 
-# Scatter plot of height vs weight in UAE
-ggplot(filter(ES_UAE_data, country == "UAE"), aes(x = height, y = weight, color = ifelse(sex == 1, "Male", "Female"))) + 
-  geom_point(alpha = 0.6) +
-  ggtitle("Height vs Weight") + 
-  labs(x = "Height (cm)", y = "Weight (kg)", color = "Sex") +
-  scale_color_manual(values = c("Female" = "pink", "Male" = "blue")) +
-  theme(plot.title = element_text(hjust = 0.5)) 
-
-# Histogram of height by sex in UAE
-ggplot(filter(ES_UAE_data, country == "UAE"), aes(x = height, fill = ifelse(sex == 1, "Male", "Female"))) +
-  geom_histogram(position = "dodge", binwidth = 5, color = "black", alpha = 0.7) +
-  ggtitle("Height Distribution by Sex") +
-  labs(x = "Height (cm)", y = "Number of People", fill = "Sex") +
-  scale_fill_manual(values = c("Female" = "pink", "Male" = "blue")) + 
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5))
-
-# Histogram of weight by sex in UAE
-ggplot(filter(ES_UAE_data, country == "UAE"), aes(x = weight, fill = ifelse(sex == 1, "Male", "Female"))) +
-  geom_histogram(position = "dodge", binwidth = 5, color = "black", alpha = 0.7) +
-  ggtitle("Weight Distribution by Sex") +
-  labs(x = "Weight (kg)", y = "Number of People", fill = "Sex") +  
-  scale_fill_manual(values = c("Female" = "pink", "Male" = "blue")) + 
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5))
-
-# Education level by sex in UAE
-ggplot(filter(ES_UAE_data, country == "UAE"), aes(x = education, fill = ifelse(sex == 1, "Male", "Female"))) +
-  geom_bar(position = "dodge", width = 1, color = "black", alpha = 0.7) +
-  ggtitle("Education Level by Sex") +
-  labs(x = "Education Level", y = "Number of People", fill = "Sex") +
-  scale_fill_manual(values = c("Female" = "pink", "Male" = "blue")) + 
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5))
-
-# Pie chart of citizenship in UAE
-ggplot(ES_UAE_data %>% filter(country == "UAE"), aes(x = factor(1), fill = citizenship)) +
-  geom_bar(width = 1, color = "white") +
-  coord_polar(theta = "y") +
-  ggtitle("Citizenship Distribution in UAE") +
-  labs(fill = "Citizenship") +
-  scale_fill_brewer(palette = "Set2") +  
-  theme_minimal() +
-  theme(
-    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
-    axis.text = element_blank(),
-    axis.title = element_blank(),
-    panel.grid = element_blank(),
-    legend.position = "right"
-  )
-
-# Heat map of weight by age and sex
-ggplot(filter(ES_UAE_data, country == "UAE"), aes(x = age, y = weight, color = ifelse(sex == 1, "Male", "Female"))) +
-  geom_point(alpha = 0.5) +  
-  geom_smooth(method = "lm", se = FALSE, color = "black") +
-  labs(title = "Weight by Age and Sex",
-       x = "Age",
-       y = "Weight (kg)",
-       color = "Sex") +
-  scale_color_manual(values = c("Male" = "blue", "Female" = "pink")) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
-
-# BMI distribution by sex in UAE
-es_uae_uae <- ES_UAE_data %>%
-  filter(country == "UAE") %>%
-  mutate(sex = factor(sex, levels = c(0, 1), labels = c("Female", "Male")))
-
-ggplot(es_uae_uae, aes(x = bmi, y = sex, fill = sex)) +
-  geom_density_ridges(alpha = 0.6) +
-  scale_fill_manual(values = c("Female" = "red", "Male" = "blue")) +
-  labs(title = "BMI Distribution by Sex", x = "BMI", y = "Sex") +
-  theme_minimal()
+source("Plots/plots_UAE.R")

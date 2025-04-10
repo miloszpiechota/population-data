@@ -1,0 +1,4 @@
+text_aims <-
+  "This dataset aims to explore the correlation between vaccination rates, age, and other demographic factors, allowing for a better understanding of the vaccination trends in Spain and the UAE. The intention is to investigate how these countries are progressing with their vaccination campaigns and whether there are observable differences based on demographic variables.
+
+The data comes from a combination of publicly available research and artificial data generation, and serves as a basis for comparing vaccination uptake in two regions with distinct demographic and cultural contexts."
