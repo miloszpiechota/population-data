@@ -175,3 +175,124 @@ ggpairs(
 
 ```
 **Legend:** 🔵 Male (1), 🔴 Female (0)
+
+
+
+Education Plots {data-icon="fa-list"}
+=====================================
+
+
+
+
+
+```{r, warning=FALSE, message=FALSE}
+# Wczytywanie bibliotek
+library(googlesheets4)
+library(DT)
+library(tidyverse)
+library(ggpubr)
+
+# Zdefiniowanie identyfikatora arkusza
+ES_UAE_sheet_id <- "1MPRhaBzMiVvIzX3NQJhgDvrtRi5mVChwExsJNsNU8gI"
+ES_UAE_sheet_name <- "Data_ES_ZEA"
+
+# Pobranie danych z arkusza Google
+ES_UAE_data <- read_sheet(ES_UAE_sheet_id, sheet = ES_UAE_sheet_name)
+
+# Upewnijmy się, że dane są odpowiednio sformatowane
+ES_UAE_data$sex <- factor(ES_UAE_data$sex, levels = c(0, 1), labels = c("Female", "Male"))
+ES_UAE_data$education <- factor(ES_UAE_data$education, 
+                                levels = c("No Education", "Primary", "Secondary", "Tertiary"))
+ES_UAE_data$country <- factor(ES_UAE_data$country, 
+                              levels = c("ES", "UAE"), labels = c("Spain", "UAE"))
+
+# Wykres 1: Liczba osób wg kategorii edukacji
+plot1 <- ggplot(ES_UAE_data, aes(x = education, fill = country)) +
+  geom_bar(position = "dodge") +
+  labs(
+    title = "Liczba osób wg kategorii edukacji",
+    x = "Poziom edukacji", y = "Liczba", fill = "Kraj"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Wykres 2: Poziom edukacji wg płci (procentowo) z podziałem na kraje
+plot2 <- ggplot(ES_UAE_data, aes(x = education, fill = sex)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~country) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    title = "Poziom edukacji wg płci",
+    x = "Edukacja", y = "Udział (%)", fill = "Płeć"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Funkcja do wykresów kołowych
+make_pie <- function(data, country_label) {
+  data %>%
+    count(citizenship) %>%
+    mutate(
+      percent = n / sum(n) * 100,
+      label = paste0(round(percent, 1), "%")
+    ) %>%
+    ggplot(aes(x = "", y = percent, fill = citizenship)) +
+    geom_col(width = 1, color = "white") +
+    coord_polar("y") +
+    geom_text(aes(label = label),
+              position = position_stack(vjust = 0.5), size = 4) +
+    labs(
+      title = paste("Obywatelstwo –", country_label),
+      fill = "Obywatelstwo"
+    ) +
+    theme_void()
+}
+
+
+
+
+# Wykresy kołowe: obywatelstwo (Hiszpania vs ZEA)
+pie_ES <- make_pie(ES_UAE_data %>% filter(country == "Spain"), "Hiszpania")
+pie_UAE <- make_pie(ES_UAE_data %>% filter(country == "UAE"), "ZEA")
+
+# Wykres 3: Zmiana struktury obywatelstwa w czasie
+plot3 <- ggplot(ES_UAE_data, aes(x = year, fill = citizenship)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~country) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    title = "Zmiana struktury obywatelstwa w czasie",
+    x = "Rok", y = "Udział (%)", fill = "Obywatelstwo"
+  ) +
+  theme_minimal()
+
+
+
+```
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### SCATTER PLOT
+
+``` {r}
+plot1
+plot2
+```
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### DOT PLOT
+
+``` {r}
+pie_ES
+pie_UAE
+```
+
+
+
+
+
+
+
