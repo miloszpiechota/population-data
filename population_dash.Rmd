@@ -128,7 +128,7 @@ ggpairs(
 ```
 **Legend:** 🔵 Male (1), 🔴 Female (0)
 
-<<<<<<< HEAD
+
 
 
 Education Plots {data-icon="fa-list"}
@@ -246,10 +246,6 @@ pie_UAE
 
 
 
-
-
-
-=======
 UAE PLOT{data-icon="fa-list"}
 =====================================
 
@@ -278,4 +274,4 @@ output$plot <- renderPlot({
 
 ```
 ------------------------------------------------------
->>>>>>> a727dd940edfdf69bd86456b66b820915a4976b8
+
