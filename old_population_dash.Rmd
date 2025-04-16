@@ -1,0 +1,281 @@
+---
+title: "Population Data - Spain and United Arab Emiartes"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    source_code: embed
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+
+source("population_ES_UAE.R")
+library(flexdashboard)
+library(googlesheets4)
+
+# load data in 'global' chunk so it can be shared by all users of the dashboard
+library(datasets)
+data(faithful)
+```
+
+
+
+DATA SET {data-icon="fa-list"}
+=====================================
+
+**Population Data - ES + UAE** Data Set.
+
+Column {data-width=300}
+-----------------------------------------------------------------------
+
+### Data Set Basic Information
+
+```{r results='asis', warning=FALSE}
+source("Text/DataSetBasicInformation.R", encoding = "UTF-8")
+cat(gsub("\n", "<br>", text))
+```
+
+### Aims 
+
+```{r results='asis', warning=FALSE}
+source("Text/Aims.R", encoding = "UTF-8")
+cat(gsub("\n", "<br>", text_aims))
+```
+
+
+
+
+Column {data-width=300}
+-----------------------------------------------------------------------
+### Data Set
+
+
+```{r}
+library(DT)
+library(tidyverse)
+library(flexdashboard)
+library(ggplot2)
+
+ES_UAE_sheet_id<- "1MPRhaBzMiVvIzX3NQJhgDvrtRi5mVChwExsJNsNU8gI"
+ES_UAE_sheet_name <- "Data_ES_ZEA"
+
+ES_UAE_data <- read_sheet(ES_UAE_sheet_id, sheet = ES_UAE_sheet_name)
+ES_UAE_data %>%
+  DT::datatable(rownames = FALSE, options=list(pageLength=15))
+```
+
+PAIR PLOT{data-icon="fa-list"}
+=====================================
+
+Column {data-width=300}
+-----------------------------------------------------------------------
+
+### Data Set
+
+```{r}
+library(GGally)
+library(googlesheets4)
+library(dplyr)
+library(DT)
+
+ES_UAE_sheet_id <- "1MPRhaBzMiVvIzX3NQJhgDvrtRi5mVChwExsJNsNU8gI"
+ES_UAE_sheet_name <- "Data_ES_ZEA"
+
+ES_UAE_data <- read_sheet(ES_UAE_sheet_id, sheet = ES_UAE_sheet_name)
+
+ES_UAE_data %>%
+  select(height, weight, sex, age, year) %>%
+  DT::datatable(rownames = FALSE, 
+                options = list(pageLength = 60, scrollY = "600px"))
+```
+
+### Information
+```{r results='asis', warning=FALSE}
+source("Text/Information.R", encoding = "UTF-8")
+cat(gsub("\n", "<br>", info))
+```
+
+
+Column {data-width=300}
+-----------------------------------------------------------------------
+
+### Pair Plot of Numerical Variables
+
+```{r}
+library(GGally)
+library(ggplot2)
+
+# Factorize 'sex' if it's not already a factor
+ES_UAE_data$sex <- as.factor(ES_UAE_data$sex)
+
+# Improved Pair Plot
+ggpairs(
+  ES_UAE_data[, c("height", "weight", "age", "year", "sex")],
+  mapping = aes(color = sex, alpha = 0.4),  # group by sex
+  title = "Pair Plot: Height, Weight, Age, Year (Colored by Sex)",
+  upper = list(continuous = wrap("cor", size = 4)),
+  lower = list(continuous = wrap("points", alpha = 0.3, size = 1)),
+  diag = list(continuous = wrap("densityDiag", alpha = 0.4))
+) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 11)
+  )
+
+
+```
+**Legend:** 🔵 Male (1), 🔴 Female (0)
+
+<<<<<<< HEAD
+
+
+Education Plots {data-icon="fa-list"}
+=====================================
+
+
+
+
+
+```{r, warning=FALSE, message=FALSE}
+# Wczytywanie bibliotek
+library(googlesheets4)
+library(DT)
+library(tidyverse)
+library(ggpubr)
+
+# Zdefiniowanie identyfikatora arkusza
+ES_UAE_sheet_id <- "1MPRhaBzMiVvIzX3NQJhgDvrtRi5mVChwExsJNsNU8gI"
+ES_UAE_sheet_name <- "Data_ES_ZEA"
+
+# Pobranie danych z arkusza Google
+ES_UAE_data <- read_sheet(ES_UAE_sheet_id, sheet = ES_UAE_sheet_name)
+
+# Upewnijmy się, że dane są odpowiednio sformatowane
+ES_UAE_data$sex <- factor(ES_UAE_data$sex, levels = c(0, 1), labels = c("Female", "Male"))
+ES_UAE_data$education <- factor(ES_UAE_data$education, 
+                                levels = c("No Education", "Primary", "Secondary", "Tertiary"))
+ES_UAE_data$country <- factor(ES_UAE_data$country, 
+                              levels = c("ES", "UAE"), labels = c("Spain", "UAE"))
+
+# Wykres 1: Liczba osób wg kategorii edukacji
+plot1 <- ggplot(ES_UAE_data, aes(x = education, fill = country)) +
+  geom_bar(position = "dodge") +
+  labs(
+    title = "Liczba osób wg kategorii edukacji",
+    x = "Poziom edukacji", y = "Liczba", fill = "Kraj"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Wykres 2: Poziom edukacji wg płci (procentowo) z podziałem na kraje
+plot2 <- ggplot(ES_UAE_data, aes(x = education, fill = sex)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~country) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    title = "Poziom edukacji wg płci",
+    x = "Edukacja", y = "Udział (%)", fill = "Płeć"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Funkcja do wykresów kołowych
+make_pie <- function(data, country_label) {
+  data %>%
+    count(citizenship) %>%
+    mutate(
+      percent = n / sum(n) * 100,
+      label = paste0(round(percent, 1), "%")
+    ) %>%
+    ggplot(aes(x = "", y = percent, fill = citizenship)) +
+    geom_col(width = 1, color = "white") +
+    coord_polar("y") +
+    geom_text(aes(label = label),
+              position = position_stack(vjust = 0.5), size = 4) +
+    labs(
+      title = paste("Obywatelstwo –", country_label),
+      fill = "Obywatelstwo"
+    ) +
+    theme_void()
+}
+
+
+
+
+# Wykresy kołowe: obywatelstwo (Hiszpania vs ZEA)
+pie_ES <- make_pie(ES_UAE_data %>% filter(country == "Spain"), "Hiszpania")
+pie_UAE <- make_pie(ES_UAE_data %>% filter(country == "UAE"), "ZEA")
+
+# Wykres 3: Zmiana struktury obywatelstwa w czasie
+plot3 <- ggplot(ES_UAE_data, aes(x = year, fill = citizenship)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~country) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    title = "Zmiana struktury obywatelstwa w czasie",
+    x = "Rok", y = "Udział (%)", fill = "Obywatelstwo"
+  ) +
+  theme_minimal()
+
+
+
+```
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### SCATTER PLOT
+
+``` {r}
+plot1
+plot2
+```
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### DOT PLOT
+
+``` {r}
+pie_ES
+pie_UAE
+```
+
+
+
+
+
+
+
+=======
+UAE PLOT{data-icon="fa-list"}
+=====================================
+
+Sidebar {.sidebar}
+-----------------------------------------------------------------------
+
+
+```{r}
+
+
+selectInput("selected_plot", "Choose a plot:",
+            choices = names(plots_list),
+            selected = names(plots_list)[1])
+
+```
+
+Column {data-width=300}
+-----------------------------------------------------------------------
+
+```{r}
+plotOutput("plot")
+output$plot <- renderPlot({
+  req(input$selected_plot)
+  plots_list[[input$selected_plot]]()
+})
+
+```
+------------------------------------------------------
+>>>>>>> a727dd940edfdf69bd86456b66b820915a4976b8

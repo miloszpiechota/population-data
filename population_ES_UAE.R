@@ -220,12 +220,17 @@ uae_database <- function(n, seed = NULL){
   data.frame(height = height, weight = weight, sex = sex, year = year, age = age, education = education, bmi = bmi, citizenship = citizenship, country = "UAE")
 }
 
+# --------- GENEROWANIE DANYCH POPULACJI ---------
+# ID arkusza Australia
+#AU_sheet_id <- "1O_GnUPEdCELxoiyczK_iYu5xxq0DZAZCQ4R4ZiLPYcs"
 
-
+# Wczytaj dane z domyślnego arkusza
+#AU_data <- read_sheet(AU_sheet_id)
+#head(AU_data)
 
 # --------- GENEROWANIE DANYCH DLA HISZPANII ---------
 
-#ES <- es_database(n, seed = 314592)
+ES <- es_database(n, seed = 314592)
 
 # Podgląd pierwszych kilku wierszy danych dla Hiszpanii
 #head(ES)
@@ -236,10 +241,10 @@ uae_database <- function(n, seed = NULL){
 #write.csv(ES, file = "ES_database.csv", row.names = FALSE)
 
 # ID arkusza Hiszpanii
-#ES_sheet_id <- "1Ri4C2_FD_mjz7fqYfR9zS5eLlD-fRD1NZQAaMohF0lk"
+ES_sheet_id <- "1Ri4C2_FD_mjz7fqYfR9zS5eLlD-fRD1NZQAaMohF0lk"
 
 # Zapisanie danych do arkusza "Dane" - Do arkusza z danymi Hiszpanii
-#sheet_write(ES, ss = ES_sheet_id, sheet = "Dane")
+sheet_write(ES, ss = ES_sheet_id, sheet = "Dane")
 #range_write(ES_sheet_id, data = ES, sheet = "Arkusz1", col_names = TRUE)
 
 
@@ -275,111 +280,7 @@ ES_UAE_sheet_name <- "Data_ES_ZEA"
 
 ES_UAE_data <- read_sheet(ES_UAE_sheet_id, sheet = ES_UAE_sheet_name)
 
-# -----------------------------------------------------------------
-
-# --- PLOTS FOR ES & UAE
-
-
-# **1. Age Histogram**
-
-ggplot(ES_UAE_data, aes(x = age, fill = country)) +
-  geom_histogram(binwidth = 5, alpha = 0.7, position = "identity") +
-  labs(title = "Age Distribution in Spain and UAE", x = "Age", y = "Number of People") +
-  theme_minimal()
-
-# **2. Scatter plot BMI vs Age**
-
-ggplot(ES_UAE_data, aes(x = age, y = bmi, color = country)) +
-  geom_point(alpha = 0.5) +
-  geom_smooth(method = "lm", se = FALSE, color = "black") +
-  labs(title = "BMI vs Age", x = "Age", y = "BMI") +
-  theme_minimal()
-
-# **3. Boxplot of Height by Gender**
-
-ggplot(ES_UAE_data, aes(x = as.factor(sex), y = height, fill = country)) +
-  geom_boxplot() +
-  scale_x_discrete(labels = c("Female", "Male")) +
-  labs(title = "Height by Gender and Country", x = "Gender", y = "Height (cm)") +
-  theme_minimal()
-
-
-# **4. Scatter Plot of Weight by Gender**
-ggplot(ES_UAE_data, aes(x = weight, fill = factor(sex))) +
-  geom_histogram(position = "identity", alpha = 0.6, binwidth = 2, color = "gray40") +
-  scale_fill_manual(values = c("red", "blue"), labels = c("Kobiety (0)", "Mężczyźni (1)")) +
-  labs(title = "Rozkład wagi według płci",
-       subtitle = "Z dokładniejszą skalą liczby osób",
-       x = "Waga (kg)",
-       y = "Liczba osób",
-       fill = "Płeć") +
-  theme_minimal() +
-  scale_y_continuous(breaks = scales::pretty_breaks(n = 6)) +  # Kontrola podziałek na osi Y
-  coord_cartesian(ylim = c(0, max(table(cut(ES_UAE_data$weight, breaks = 30))) * 0.6)) +  # Ograniczenie skali Y
-  scale_x_continuous(breaks = scales::pretty_breaks(n = 6)) +  # Kontrola podziałek na osi X
-  coord_cartesian(xlim = c(0, max(table(cut(ES_UAE_data$height, breaks = 30))) * 0.6))  # Ograniczenie skali X
-
-
-
-# --- PLOTS FOR ES ---
-# **1. Scatter Plot of Height vs Weight**
-
-plot(filter(ES_UAE_data, country == "ES")$height, filter(ES_UAE_data, country == "ES")$weight,
-     main = "Height vs Weight",
-     xlab = "Height (cm)",
-     ylab = "Weight (kg)",
-     col = ifelse(filter(ES_UAE_data, country == "ES")$sex == "1", "blue", "red"),
-     pch = 16)
-legend("topleft", legend = c("Male", "Female"), col = c("blue", "red"), pch = 16)
-
-# **2. Pair Plot for Numerical Variables: Height, Weight, Age, and Year**
-
-pairs(filter(ES_UAE_data, country == "ES")[, c("height", "weight", "age", "year")],
-      main = "Pair Plot for Numerical Variables")
-
-# **3. Boxplot of Height by Education Level**
-
-boxplot(height ~ education, data = filter(ES_UAE_data, country == "ES"),
-        main = "Height Distribution by Education Level",
-        xlab = "Education",
-        ylab = "Height (cm)",
-        col = c("orange", "lightblue", "lightgreen", "pink"))
-
-# **4. Bar Plot of Average Weight by Gender**
-
-avg_weight <- tapply(filter(ES_UAE_data, country == "ES")$weight, filter(ES_UAE_data, country == "ES")$sex, mean)
-barplot(avg_weight,
-        main = "Average Weight by Gender",
-        xlab = "Gender",
-        ylab = "Average Weight (kg)",
-        col = c("red", "blue"),
-        ylim = c(0, max(avg_weight) * 1.1))
-
-# **5. Scatter Plot of Weight by Gender**
-
-plot(filter(ES_UAE_data, country == "ES")$sex, filter(ES_UAE_data, country == "ES")$weight,
-     main = "Weight by Gender",
-     xlab = "Gender",
-     ylab = "Weight (kg)",
-     col = c("red", "blue"),
-     pch = 16)
-
-# **6. Age Histogram**
-
-hist(filter(ES_UAE_data, country == "ES")$age, breaks = 20,
-     main = "Age Distribution",
-     xlab = "Age",
-     col = "lightgreen")
-
-# **7. Bar Plot of Education Category Counts**
-
-education_counts <- table(filter(ES_UAE_data, country == "ES")$education)
-barplot(education_counts,
-        main = "Counts by Education Category",
-        xlab = "Education",
-        ylab = "Number of Observations",
-        col = "orange")
-
-# --- PLOTS FOR UAE ---
 
 source("Plots/plots_UAE.R")
+
+
