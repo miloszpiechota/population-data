@@ -71,13 +71,10 @@ Column {data-width=300}
 -----------------------------------------------------------------------
 ### Data
 ```{r}
-<<<<<<< HEAD
+
 # Załaduj wymagane pakiety
 library(tidyverse)
-library(shiny)
-=======
-# Załaduj pakiety
-library(shiny)
+
 library(ggplot2)
 library(dplyr)
 library(readr)
@@ -341,7 +338,7 @@ ggplot(bmi_trend, aes(x = rok, y = mean_BMI, color = kraj)) +
   })
   
 
->>>>>>> milosz
+
 # Wczytaj dane
 additional_data <- read_csv("additional_data.csv")
 # Dodaj kolumnę z kategorią BMI
@@ -352,7 +349,7 @@ additional_data <- additional_data %>%
     BMI >= 25 & BMI < 30 ~ "Nadwaga",
     BMI >= 30 ~ "Otyłość"
   ))
-<<<<<<< HEAD
+
 ui <- fluidPage(
   titlePanel("Średnie BMI w czasie dla wybranych krajów"),
   sidebarLayout(
@@ -370,10 +367,10 @@ ui <- fluidPage(
   )
 )
 server <- function(input, output) {
-=======
 
 
->>>>>>> milosz
+
+
   output$bmi_plot <- renderPlot({
     # Filtrowanie danych na podstawie wybranych krajów
     filtered_data <- additional_data %>%
@@ -408,10 +405,10 @@ server <- function(input, output) {
       ) +
       theme_minimal()
   })
-<<<<<<< HEAD
+
 }
 shinyApp(ui = ui, server = server)
-=======
+
 
 
   # Wykres 3: Procentowy udział poszczególnych kategorii BMI w populacji każdego kraju symulacja
@@ -453,12 +450,11 @@ shinyApp(ui = ui, server = server)
 
 
 
->>>>>>> milosz
 ```
 
 
 
-<<<<<<< HEAD
+
 UAE PLOT{data-icon="fa-list"} =====================================
 ###Data
 =======
@@ -467,7 +463,7 @@ UAE PLOT{data-icon="fa-list"} =====================================
 UAE PLOT{data-icon="fa-list"}
 =====================================
 
->>>>>>> milosz
+
 Sidebar {.sidebar}
 -----------------------------------------------------------------------
 ```{r}
