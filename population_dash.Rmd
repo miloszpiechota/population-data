@@ -71,9 +71,277 @@ Column {data-width=300}
 -----------------------------------------------------------------------
 ### Data
 ```{r}
+<<<<<<< HEAD
 # Załaduj wymagane pakiety
 library(tidyverse)
 library(shiny)
+=======
+# Załaduj pakiety
+library(shiny)
+library(ggplot2)
+library(dplyr)
+library(readr)
+
+# Wczytaj dane
+additional_data <- read_csv("additional_data.csv")
+dane <- read_csv("BMI_real.csv")
+
+# Przetwórz dane
+obesity_trends <- additional_data %>%
+  mutate(is_obese = ifelse(BMI >= 30, 1, 0)) %>%
+  group_by(country, year) %>%
+  summarise(obesity_rate = mean(is_obese, na.rm = TRUE) * 100, .groups = 'drop')
+
+bmi_trend <- additional_data %>%
+  group_by(country, year) %>%
+  summarise(mean_BMI = mean(BMI, na.rm = TRUE), .groups = 'drop')
+
+# Definiowanie UI
+ui <- fluidPage(
+  titlePanel("Dashboard BMI i Otyłości"),
+  sidebarLayout(
+    sidebarPanel(
+      p("Dashboard przedstawia różne analizy dotyczące BMI i otyłości w wybranych krajach."),
+      uiOutput("opisWykresu")
+    ),
+    mainPanel(
+      tabsetPanel(
+         id = "tabs",
+        tabPanel("Trend otyłości (BMI ≥ 30) symulacja", plotOutput("obesityTrend")),
+        tabPanel("Trend średniego BMI w czasie symulacja", plotOutput("meanBmiTrend")),
+        tabPanel("Procentowy udział kategorii BMI", plotOutput("bmiCategories")),
+        tabPanel("Średnie BMI w czasie (dane WHO)", plotOutput("mean1")),
+        tabPanel("BMI (WHO vs symulacja)",
+                 plotOutput("mean2")),
+        tabPanel("BMI (WHO vs symulacja) - wizualizacja różnic w czasie", plotOutput("mean3")),
+        tabPanel("BMI (WHO vs symulacja) - obszar różnic", plotOutput("mean3")),
+        
+        # Nowa zakładka z filtrem krajów i wykresem
+        tabPanel("Średnie BMI wg krajów",
+          sidebarLayout(
+            sidebarPanel(
+              checkboxGroupInput(
+                inputId = "selected_countries",
+                label = "Wybierz kraj(e):",
+                choices = unique(additional_data$country),
+                selected = unique(additional_data$country)
+              )
+            ),
+            mainPanel(
+              plotOutput("bmi_plot")
+            )
+          )
+        )
+      )
+    )
+  )
+)
+
+
+# Definiowanie serwera
+server <- function(input, output) {
+  output$opisWykresu <- renderUI({
+  active_tab <- input$tabs  # musisz nazwać tabsetPanel: id = "tabs"
+  
+  tekst_opisu <- switch(active_tab,
+    "Trend otyłości" = "Wykres przedstawia zmiany w odsetku osób z otyłością (BMI ≥ 30) w czasie.",
+    "Trend średniego BMI" = "Wykres pokazuje trend średniego BMI dla wybranych krajów na przestrzeni lat.",
+    "Procentowy udział kategorii BMI" = "Wizualizacja udziału poszczególnych kategorii BMI (np. otyłość, niedowaga) w każdym kraju.",
+    "BMI REAL" = "Trend średniego BMI wg danych rzeczywistych (WHO) dla wybranych krajów.",
+    "REAL 1" = "Porównanie trendów średniego BMI: dane WHO (rzeczywiste) vs dane sztuczne.",
+    "REAL 2" = "Różnica średniego BMI (WHO - sztuczne) w czasie.",
+    "REAL 3" = "Wizualizacja różnic między BMI rzeczywistym i sztucznym – obszar różnicy (ribbon plot).",
+    "Średnie BMI w czasie dla wybranych krajów" = "Interaktywny wykres pokazujący zmiany średniego BMI na przestrzeni lat dla wybranych krajów.",
+    "Wybierz wykres po lewej, aby zobaczyć opis."
+  )
+  
+  HTML(paste("<b>Opis wykresu:</b><br>", tekst_opisu))
+})
+
+  
+  # Wykres 1: Trend otyłości (BMI ≥ 30) w czasie dla wybranych krajów - Symulacja
+
+  output$obesityTrend <- renderPlot({
+    ggplot(obesity_trends, aes(x = year, y = obesity_rate, color = country)) +
+      geom_smooth(method = "lm", se = FALSE, size = 1.3) +  # tylko linie trendu
+      labs(
+        title = "Trend otyłości (BMI ≥ 30) w czasie",
+        subtitle = "Odsetek osób z otyłością w wybranych krajach (1925–2025)",
+        x = "Rok",
+        y = "Odsetek osób z otyłością [%]",
+        color = "Kraj"
+      ) +
+      theme_minimal(base_size = 14)
+  })
+  
+
+  
+  #  Wykres 2: Trend średniego BMI w czasie  – regresja liniowa (symulacja)
+
+  output$meanBmiTrend <- renderPlot({
+    ggplot(bmi_trend, aes(x = year, y = mean_BMI, color = country)) +
+      geom_smooth(method = "lm", se = FALSE, size = 1.3) +
+      labs(
+        title = "Trend średniego BMI w czasie",
+        subtitle = "Dane dla wybranych krajów (1925–2025)",
+        x = "Rok",
+        y = "Średni BMI",
+        color = "Kraj"
+      ) +
+      theme_minimal()
+  })
+  
+  
+
+library(tidyverse)
+library(readr)
+
+# === Wczytanie danych ===
+
+# 1. WHO BMI data (BMI_real.csv)
+dane_real <- read_csv("BMI_real.csv")
+
+# 2. Sztuczne dane BMI (additional_data.csv) — cały w jednej kolumnie
+dane_additional_raw <- read_delim("additional_data.csv", delim = "\t", col_names = FALSE)
+
+# Rozdzielenie kolumn z pliku dodatkowego
+dane_additional <- dane_additional_raw %>%
+  separate(X1, into = c("id1", "id2", "id3", "year", "col5", "citizenship", "BMI", "col8", "col9"),
+           sep = "\t|,", extra = "merge", fill = "right") %>%
+  mutate(
+    BMI = str_replace(BMI, ",", "."),
+    BMI = as.numeric(BMI),
+    year = as.numeric(year)
+  )
+
+# === Mapowanie kodów krajów ===
+country_code_mapping <- tibble(
+  code_real = c("ESP", "GBR", "TJK", "USA", "ARE"),
+  code_additional = c("ES", "GB", "TJK", "US", "UAE"),
+  country_name = c("Hiszpania", "Wielka Brytania", "Tadżykistan", "USA", "Zjednoczone Emiraty Arabskie")
+)
+
+# === Oczyszczanie danych WHO ===
+dane_real_filtered <- dane_real %>%
+  filter(SpatialDimensionValueCode %in% country_code_mapping$code_real) %>%
+  mutate(
+    year = as.numeric(TimeDim),
+    BMI_real = as.numeric(NumericValue)
+  ) %>%
+  left_join(country_code_mapping, by = c("SpatialDimensionValueCode" = "code_real")) %>%
+  select(country_name, year, BMI_real) %>%
+  filter(!is.na(country_name), !is.na(BMI_real), !is.na(year))
+
+# === Oczyszczanie danych sztucznych ===
+dane_additional_filtered <- dane_additional %>%
+  filter(citizenship %in% country_code_mapping$code_additional) %>%
+  left_join(country_code_mapping, by = c("citizenship" = "code_additional")) %>%
+  group_by(country_name, year) %>%
+  summarise(BMI_additional = mean(BMI, na.rm = TRUE), .groups = "drop") %>%
+  filter(!is.na(country_name), !is.na(BMI_additional), !is.na(year))
+
+# === Połączenie danych ===
+dane_combined <- dane_real_filtered %>%
+  inner_join(dane_additional_filtered, by = c("country_name", "year")) %>%
+  mutate(difference = BMI_real - BMI_additional)
+
+
+output$mean2 <- renderPlot({
+  # 2. Różnica w średnim BMI — z gładką linią
+  ggplot(dane_combined, aes(x = year, y = difference)) +
+  geom_smooth(color = "purple", method = "loess", size = 1.2) +
+  facet_wrap(~ country_name) +
+  labs(
+    title = "Różnica w średnim BMI w czasie",
+    x = "Rok",
+    y = "Różnica BMI (Rzeczywiste - Sztuczne)"
+  ) +
+  theme_minimal()
+})
+
+output$mean3 <-renderPlot({
+  # 3. Obszar różnicy (ribbon) — z gładką linią
+ggplot(dane_combined, aes(x = year)) +
+  geom_ribbon(aes(ymin = pmin(BMI_real, BMI_additional), ymax = pmax(BMI_real, BMI_additional)),
+              fill = "blue", alpha = 0.3) +
+  geom_smooth(aes(y = BMI_real), method = "loess", color = "red", size = 1.2) +
+  geom_smooth(aes(y = BMI_additional), method = "loess", color = "green", size = 1.2, linetype = "dashed") +
+  facet_wrap(~ country_name) +
+  labs(
+    title = "Obszar różnicy między średnim BMI",
+    x = "Rok",
+    y = "BMI"
+  ) +
+  theme_minimal()
+})
+  # Wykres 5: Porównanie trendów średniego BMI (WHO vs symulacja)
+
+  output$mean1 <- renderPlot({
+      # 1. Porównanie trendów BMI — z gładkimi liniami
+ggplot(dane_combined, aes(x = year)) +
+  geom_smooth(aes(y = BMI_real, color = "WHO"), method = "loess", size = 1.2) +
+  geom_smooth(aes(y = BMI_additional, color = "symulacja"), method = "loess", size = 1.2, linetype = "dashed") +
+  facet_wrap(~ country_name) +
+  labs(
+    title = "Porównanie trendów średniego BMI (WHO vs symulacja)",
+    x = "Rok",
+    y = "Średnie BMI",
+    color = "Źródło danych"
+  ) +
+  theme_minimal()
+  })
+  
+
+  
+  
+  #Wykres 4: Średnie BMI w czasie (dane WHO) – REALNE wartości
+
+  output$meanBmiReal <- renderPlot({
+    
+
+# 1. Wczytanie danych
+dane <- read_csv("BMI_real.csv")  # <- zamień na prawdziwą nazwę pliku
+
+# 2. Filtrowanie i przygotowanie danych tylko dla wybranych krajów
+kraje_docelowe <- c("ESP", "GBR", "TJK", "USA", "ARE")
+
+bmi_trend <- dane %>%
+  filter(
+    SpatialDimensionValueCode %in% kraje_docelowe,
+    !is.na(NumericValue),
+    !is.na(TimeDim)
+  ) %>%
+  mutate(
+    rok = as.numeric(TimeDim),
+    kraj = case_when(
+      SpatialDimensionValueCode == "ESP" ~ "Hiszpania",
+      SpatialDimensionValueCode == "GBR" ~ "Wielka Brytania",
+      SpatialDimensionValueCode == "TJK" ~ "Tadżykistan",
+      SpatialDimensionValueCode == "USA" ~ "USA",
+      SpatialDimensionValueCode == "ARE" ~ "United Arab Emirates",
+      TRUE ~ SpatialDimensionValueCode
+    ),
+    BMI = as.numeric(NumericValue)
+  ) %>%
+  group_by(kraj, rok) %>%
+  summarise(mean_BMI = mean(BMI, na.rm = TRUE), .groups = 'drop')
+
+# 3. Tworzenie wykresu trendu BMI
+ggplot(bmi_trend, aes(x = rok, y = mean_BMI, color = kraj)) +
+  geom_smooth(method = "lm", se = FALSE, linewidth = 1.3) +
+  labs(
+    title = "Średnie BMI w czasie (dane WHO)",
+    subtitle = "Dla wybranych krajów: ESP, GB, TJK, USA, ARE",
+    x = "Rok",
+    y = "Średni BMI",
+    color = "Kraj"
+  ) +
+  theme_minimal()
+
+  })
+  
+
+>>>>>>> milosz
 # Wczytaj dane
 additional_data <- read_csv("additional_data.csv")
 # Dodaj kolumnę z kategorią BMI
@@ -84,6 +352,7 @@ additional_data <- additional_data %>%
     BMI >= 25 & BMI < 30 ~ "Nadwaga",
     BMI >= 30 ~ "Otyłość"
   ))
+<<<<<<< HEAD
 ui <- fluidPage(
   titlePanel("Średnie BMI w czasie dla wybranych krajów"),
   sidebarLayout(
@@ -101,6 +370,10 @@ ui <- fluidPage(
   )
 )
 server <- function(input, output) {
+=======
+
+
+>>>>>>> milosz
   output$bmi_plot <- renderPlot({
     # Filtrowanie danych na podstawie wybranych krajów
     filtered_data <- additional_data %>%
@@ -135,14 +408,66 @@ server <- function(input, output) {
       ) +
       theme_minimal()
   })
+<<<<<<< HEAD
 }
 shinyApp(ui = ui, server = server)
+=======
+
+
+  # Wykres 3: Procentowy udział poszczególnych kategorii BMI w populacji każdego kraju symulacja
+
+  output$bmiCategories <- renderPlot({
+    bmi_counts <- additional_data %>%
+      mutate(BMI_category = case_when(
+        BMI < 18.5 ~ "Niedowaga",
+        BMI >= 18.5 & BMI < 25 ~ "Prawidłowa",
+        BMI >= 25 & BMI < 30 ~ "Nadwaga",
+        BMI >= 30 ~ "Otyłość"
+      )) %>%
+      group_by(country, BMI_category) %>%
+      summarise(count = n(), .groups = 'drop')
+    
+    bmi_percentages <- bmi_counts %>%
+      group_by(country) %>%
+      mutate(
+        percentage = count / sum(count) * 100,
+        label = paste0(round(percentage, 1), "%")
+      ) %>%
+      ungroup()
+    
+    ggplot(bmi_percentages, aes(x = country, y = percentage, fill = BMI_category)) +
+      geom_bar(stat = "identity", position = "stack") +
+      geom_text(aes(label = label), position = position_stack(vjust = 0.5), color = "black", size = 3) +
+      labs(
+        title = "Procentowy udział kategorii BMI w populacji każdego kraju",
+        x = "Kraj",
+        y = "Procent populacji",
+        fill = "Kategoria BMI"
+      ) +
+      theme_minimal()
+  })
+}
+
+# Uruchomienie aplikacji
+shinyApp(ui = ui, server = server)
+
+
+
+>>>>>>> milosz
 ```
 
 
 
+<<<<<<< HEAD
 UAE PLOT{data-icon="fa-list"} =====================================
 ###Data
+=======
+
+
+UAE PLOT{data-icon="fa-list"}
+=====================================
+
+>>>>>>> milosz
 Sidebar {.sidebar}
 -----------------------------------------------------------------------
 ```{r}
