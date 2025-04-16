@@ -5,6 +5,11 @@
 # - indicators: listę współczynników dla poszczególnych przedziałów wiekowych edukacji oraz współczynnika obywatelstwa
 generate_additional_data <- function(data, indicators) {
   
+  # Oblicz liczbę wierszy (potrzebne do próbkowania)
+  n <- nrow(data)
+  
+  # Losowanie wartości year z przedziału 1925–2025
+  data$year <- sample(1925:2025, n, replace = TRUE)
   # Oblicz kolumnę BMI
   data <- data %>% 
     mutate(BMI = round(weight / ((height / 100) ^ 2), 2))
