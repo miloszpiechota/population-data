@@ -95,25 +95,21 @@ bmi_trend <- additional_data %>%
 
 # Definiowanie UI
 ui <- fluidPage(
-  titlePanel("Dashboard BMI i Otyłości"),
+  uiOutput("dynamicTitle"),  # Dynamiczny tytuł
   sidebarLayout(
     sidebarPanel(
-      p("Dashboard przedstawia różne analizy dotyczące BMI i otyłości w wybranych krajach."),
-      uiOutput("opisWykresu")
+      uiOutput("opisWykresu")  # Dynamiczny opis
     ),
     mainPanel(
       tabsetPanel(
-         id = "tabs",
+        id = "tabs",
         tabPanel("Trend otyłości (BMI ≥ 30) symulacja", plotOutput("obesityTrend")),
         tabPanel("Trend średniego BMI w czasie symulacja", plotOutput("meanBmiTrend")),
         tabPanel("Procentowy udział kategorii BMI", plotOutput("bmiCategories")),
         tabPanel("Średnie BMI w czasie (dane WHO)", plotOutput("mean1")),
-        tabPanel("BMI (WHO vs symulacja)",
-                 plotOutput("mean2")),
+        tabPanel("BMI (WHO vs symulacja)", plotOutput("mean2")),
         tabPanel("BMI (WHO vs symulacja) - wizualizacja różnic w czasie", plotOutput("mean3")),
         tabPanel("BMI (WHO vs symulacja) - obszar różnic", plotOutput("mean3")),
-        
-        # Nowa zakładka z filtrem krajów i wykresem
         tabPanel("Średnie BMI wg krajów",
           sidebarLayout(
             sidebarPanel(
@@ -134,42 +130,121 @@ ui <- fluidPage(
   )
 )
 
-
-# Definiowanie serwera
 server <- function(input, output) {
+  
+  output$dynamicTitle <- renderUI({
+    active_tab <- input$tabs
+    
+    title_text <- switch(active_tab,
+      "Trend otyłości (BMI ≥ 30) symulacja" = "Trend otyłości",
+      "Trend średniego BMI w czasie symulacja" = "Trend średniego BMI",
+      "Procentowy udział kategorii BMI" = "Kategorie BMI",
+      "Średnie BMI w czasie (dane WHO)" = "Średnie BMI (WHO)",
+      "BMI (WHO vs symulacja)" = "BMI: WHO vs symulacja",
+      "BMI (WHO vs symulacja) - obszar różnic" = "BMI: obszar różnic",
+      "Średnie BMI wg krajów" = "Średnie BMI wg krajów",
+      "Dashboard BMI i Otyłości"
+    )
+    
+    titlePanel(title_text)
+  })
+  
   output$opisWykresu <- renderUI({
-  active_tab <- input$tabs  # musisz nazwać tabsetPanel: id = "tabs"
+    active_tab <- input$tabs
+    
+    tekst_opisu <- switch(active_tab,
+      "Trend otyłości (BMI ≥ 30) symulacja" = "Wykres przedstawia zmiany w odsetku osób z otyłością (BMI ≥ 30) w czasie. 
+      
+      Na podstawie symulacji można wysunąć wnioski że:
+      1. UAE ma najwyższy poziom otyłości spośród wszystkich prezentowanych krajów. Widoczny trend spadkowy – odsetek osób z otyłością maleje z ponad 21% do około 16%.
+      2. GB ma drugi najwyższy poziom otyłości. Również widoczny trend spadkowy, choć mniej stromy niż w przypadku UAE. 
+      3.ES ma stosunkowo stabilny poziom otyłości, około 16% – brak wyraźnego trendu wzrostowego lub spadkowego.
+      4.USA ma bardzo niska wartość – praktycznie zerowy odsetek osób z otyłością przez cały okres co oznacza ze dane USA nie przewiduja otylosci > 30",
+      
+      
+      "Trend średniego BMI w czasie symulacja" = "Wykres pokazuje trend średniego BMI dla wybranych krajów na przestrzeni lat. Wykres bazuje na regresji liniowej – pokazuje ogólny trend (wzrostowy lub spadkowy).
+      UAE (Zjednoczone Emiraty Arabskie) zaczynają z bardzo wysokim średnim BMI (~25.9), ale trend wyraźnie spada.
+
+GB (Wielka Brytania) również zaczyna z wysokiego poziomu, choć nieco wyżej niż UAE, i także notuje spadek.
+US (Stany Zjednoczone) jako jedyny kraj notuje stały wzrost BMI
+",
+      "Procentowy udział kategorii BMI" = "Wizualizacja udziału poszczególnych kategorii BMI (np. otyłość, niedowaga) w każdym kraju. Dla TJK Aż 90% populacji ma prawidłowe BMI. Brak nadwagi i otyłości – idealna sytuacja zdrowotna. ",
+      "Średnie BMI w czasie (dane WHO)" = "Trend średniego BMI wg danych rzeczywistych (WHO) dla wybranych krajów. Symulacja znacznie zaniża rzeczywiste wartości BMI we wszystkich krajach (szczególnie w krajach rozwiniętych). ",
+      "BMI (WHO vs symulacja)" = "Porównanie trendów średniego BMI: dane WHO (rzeczywiste) vs dane sztuczne. Jak bardzo i w którą stronę symulacja odbiega od rzeczywistości.
+      Hiszpania:
+Różnica rośnie do ~2010 (ok. +9 punktów), potem lekki spadek.
+
+Model coraz bardziej niedoszacowuje rzeczywistość, ale po 2010 trend się stabilizuje.
+
+Tadżykistan:
+Różnica ujemna przez cały czas (~–3), czyli model przewiduje wyższe BMI niż rzeczywistość.
+
+Stabilność – brak dużych błędów predykcji.
+
+USA:
+Różnica bardzo duża (ok. +18 punktów), stabilizuje się po 2010.
+
+Model znacznie zaniża rzeczywiste BMI.
+
+Wielka Brytania:
+Różnica rośnie do ok. +6 i utrzymuje się.
+
+Model niedoszacowuje wzrostu BMI w UK.
+
+Zjednoczone Emiraty Arabskie:
+Różnica rośnie bardzo wyraźnie, do ponad +20 w 2020.
+
+Model drastycznie niedoszacowuje rzeczywistego wzrostu BMI.",
+      
+      "BMI (WHO vs symulacja) - obszar różnic" = "Wizualizacja różnic między BMI rzeczywistym i sztucznym – obszar różnicy (ribbon plot).Im większy niebieski obszar, tym większa różnica między BMI rzeczywistym a symulowanym.
+
+Jeśli czerwona linia leży powyżej zielonej, to model zaniża BMI.
+
+Jeśli zielona leży wyżej – model zawyża rzeczywistość (co tu prawie nie występuje).
+
+Różnica może narastać, maleć, lub być stała w czasie.
+
+",
+      "Średnie BMI wg krajów" = "Interaktywny wykres pokazujący zmiany średniego BMI na przestrzeni lat dla wybranych krajów.Punkty pokazują rozrzut (wariancję) wartości w czasie. Czerwona linia to linia trendu (gładka krzywa) utworzona za pomocą funkcji geom_smooth() z ggplot2",
+      "Wybierz wykres po lewej, aby zobaczyć opis."
+    )
+    
+    HTML(paste("<b>Opis wykresu:</b><br>", tekst_opisu))
+  })
+
+
+
   
-  tekst_opisu <- switch(active_tab,
-    "Trend otyłości" = "Wykres przedstawia zmiany w odsetku osób z otyłością (BMI ≥ 30) w czasie.",
-    "Trend średniego BMI" = "Wykres pokazuje trend średniego BMI dla wybranych krajów na przestrzeni lat.",
-    "Procentowy udział kategorii BMI" = "Wizualizacja udziału poszczególnych kategorii BMI (np. otyłość, niedowaga) w każdym kraju.",
-    "BMI REAL" = "Trend średniego BMI wg danych rzeczywistych (WHO) dla wybranych krajów.",
-    "REAL 1" = "Porównanie trendów średniego BMI: dane WHO (rzeczywiste) vs dane sztuczne.",
-    "REAL 2" = "Różnica średniego BMI (WHO - sztuczne) w czasie.",
-    "REAL 3" = "Wizualizacja różnic między BMI rzeczywistym i sztucznym – obszar różnicy (ribbon plot).",
-    "Średnie BMI w czasie dla wybranych krajów" = "Interaktywny wykres pokazujący zmiany średniego BMI na przestrzeni lat dla wybranych krajów.",
-    "Wybierz wykres po lewej, aby zobaczyć opis."
-  )
-  
-  HTML(paste("<b>Opis wykresu:</b><br>", tekst_opisu))
+output$obesityTrend <- renderPlot({
+  library(dplyr)
+  library(ggplot2)
+
+  ggplot(obesity_trends, aes(x = year, y = obesity_rate, color = country)) +
+    geom_smooth(se = FALSE, method = "loess", span = 0.4, size = 1.2) +
+    scale_y_continuous(labels = function(x) paste0(x, "%")) +
+    scale_x_continuous(
+      breaks = seq(min(obesity_trends$year), max(obesity_trends$year), 25),
+      limits = c(min(obesity_trends$year), max(obesity_trends$year) + 10)
+    ) +
+    labs(
+      title = "Trend otyłości (BMI ≥ 30) w czasie",
+      subtitle = "Odsetek osób z otyłością w wybranych krajach (1925–2025)",
+      x = "Rok",
+      y = "Odsetek osób z otyłością [%]",
+      color = "Kraj",  # nazwa legendy
+      caption = "Źródło: dane symulowane na podstawie modelu edukacyjno-demograficznego"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title = element_text(face = "bold"),
+      plot.caption = element_text(size = 10, face = "italic", hjust = 1),
+      legend.position = "right"  # <- pokazuje legendę
+    )
 })
 
-  
-  # Wykres 1: Trend otyłości (BMI ≥ 30) w czasie dla wybranych krajów - Symulacja
 
-  output$obesityTrend <- renderPlot({
-    ggplot(obesity_trends, aes(x = year, y = obesity_rate, color = country)) +
-      geom_smooth(method = "lm", se = FALSE, size = 1.3) +  # tylko linie trendu
-      labs(
-        title = "Trend otyłości (BMI ≥ 30) w czasie",
-        subtitle = "Odsetek osób z otyłością w wybranych krajach (1925–2025)",
-        x = "Rok",
-        y = "Odsetek osób z otyłością [%]",
-        color = "Kraj"
-      ) +
-      theme_minimal(base_size = 14)
-  })
+
+
   
 
   
@@ -350,64 +425,33 @@ additional_data <- additional_data %>%
     BMI >= 30 ~ "Otyłość"
   ))
 
-ui <- fluidPage(
-  titlePanel("Średnie BMI w czasie dla wybranych krajów"),
-  sidebarLayout(
-    sidebarPanel(
-      checkboxGroupInput(
-        inputId = "selected_countries",
-        label = "Wybierz kraj(e):",
-        choices = unique(additional_data$country),
-        selected = unique(additional_data$country)
-      )
-    ),
-    mainPanel(
-      plotOutput("bmi_plot")
-    )
-  )
-)
-server <- function(input, output) {
+# Dodaj ten fragment DO TWOJEGO ISTNIEJĄCEGO SERVERA
 
+output$bmi_plot <- renderPlot({
+  filtered_data <- additional_data %>%
+    filter(country %in% input$selected_countries) %>%
+    group_by(country, year) %>%
+    summarise(avg_BMI = mean(BMI, na.rm = TRUE), .groups = "drop")
 
+  ggplot(filtered_data, aes(x = year, y = avg_BMI, color = country)) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 18.5, fill = "lightblue", alpha = 0.1) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 18.5, ymax = 25, fill = "lightgreen", alpha = 0.1) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 25, ymax = 30, fill = "khaki", alpha = 0.1) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 30, ymax = Inf, fill = "lightcoral", alpha = 0.1) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(se = FALSE, size = 1.3, method = "loess") +
+  scale_color_brewer(palette = "Set1") +
+  labs(
+    title = "Średnie BMI w czasie dla wybranych krajów",
+    subtitle = "Kolory reprezentują kraje. Tło pokazuje klasyfikację BMI.",
+    x = "Rok",
+    y = "Średnie BMI",
+    color = "Kraj"
+  ) +
+  theme_minimal(base_size = 14)
 
+})
 
-  output$bmi_plot <- renderPlot({
-    # Filtrowanie danych na podstawie wybranych krajów
-    filtered_data <- additional_data %>%
-      filter(country %in% input$selected_countries) %>%
-      group_by(country, year) %>%
-      summarise(avg_BMI = mean(BMI, na.rm = TRUE)) %>%
-      ungroup()
-    # Tworzenie wykresu
-    ggplot(filtered_data, aes(x = year, y = avg_BMI, color = country)) +
-      # Obszary klasyfikacji BMI
-      annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 18.5, fill = "lightblue", alpha = 0.1) +
-      annotate("rect", xmin = -Inf, xmax = Inf, ymin = 18.5, ymax = 25, fill = "lightgreen", alpha = 0.1) +
-      annotate("rect", xmin = -Inf, xmax = Inf, ymin = 25, ymax = 30, fill = "khaki", alpha = 0.1) +
-      annotate("rect", xmin = -Inf, xmax = Inf, ymin = 30, ymax = Inf, fill = "lightcoral", alpha = 0.1) +
-      # Linie średniego BMI dla każdego kraju
-      geom_line(size = 1.2) +
-       # Przerywane linie poziome dla progów BMI
- # Przerywane czarne linie poziome dla progów BMI
-    geom_hline(yintercept = 18.5, linetype = "dashed", color = "black", size = 0.5) +
-    geom_hline(yintercept = 25, linetype = "dashed", color = "black", size = 0.5) +
-    geom_hline(yintercept = 30, linetype = "dashed", color = "black", size = 0.5) +
-    # Podpisy dla linii progów BMI
-    annotate("text", x = min(filtered_data$year, na.rm = TRUE), y = 18.5, label = "Niedowaga (18.5)", vjust = -0.5, hjust = 0, color = "black", size = 3) +
-    annotate("text", x = min(filtered_data$year, na.rm = TRUE), y = 25, label = "Prawidłowa (25)", vjust = -0.5, hjust = 0, color = "black", size = 3) +
-    annotate("text", x = min(filtered_data$year, na.rm = TRUE), y = 30, label = "Nadwaga (30)", vjust = -0.5, hjust = 0, color = "black", size = 3) +
-      # Dodatkowe elementy wykresu
-      labs(
-        title = "Średnie BMI w czasie dla wybranych krajów",
-        x = "Rok",
-        y = "Średnie BMI",
-        color = "Kraj"
-      ) +
-      theme_minimal()
-  })
-
-}
-shinyApp(ui = ui, server = server)
 
 
 
@@ -416,10 +460,10 @@ shinyApp(ui = ui, server = server)
   output$bmiCategories <- renderPlot({
     bmi_counts <- additional_data %>%
       mutate(BMI_category = case_when(
-        BMI < 18.5 ~ "Niedowaga",
-        BMI >= 18.5 & BMI < 25 ~ "Prawidłowa",
-        BMI >= 25 & BMI < 30 ~ "Nadwaga",
-        BMI >= 30 ~ "Otyłość"
+        BMI < 18.5 ~ "Niedowaga BMI < 18.5",
+        BMI >= 18.5 & BMI < 25 ~ "Prawidłowa BMI 18.5–24.9",
+        BMI >= 25 & BMI < 30 ~ "Nadwaga BMI 25–29.9",
+        BMI >= 30 ~ "Otyłość BMI ≥ 30"
       )) %>%
       group_by(country, BMI_category) %>%
       summarise(count = n(), .groups = 'drop')
