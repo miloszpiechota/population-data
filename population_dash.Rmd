@@ -18,8 +18,6 @@ library(datasets)
 data(faithful)
 ```
 
-
-
 DATA SET {data-icon="fa-list"}
 =====================================
 
@@ -43,8 +41,6 @@ cat(gsub("\n", "<br>", text_aims))
 ```
 
 
-
-
 Column {data-width=300}
 -----------------------------------------------------------------------
 ### Data Set
@@ -62,18 +58,279 @@ additional_data %>%
   DT::datatable(rownames = FALSE, options=list(pageLength=15))
 ```
 
-BMI PLOTS {data-icon="fa-list"}
+BMI PLOTS {data-icon="fa-chart-bar"}
 =====================================
 
-
-
-Column {data-width=300}
+Column {data-width=650}
 -----------------------------------------------------------------------
 ### Data
 ```{r}
+
 # Załaduj wymagane pakiety
 library(tidyverse)
-library(shiny)
+
+library(ggplot2)
+library(dplyr)
+library(readr)
+
+# Wczytaj dane
+additional_data <- read_csv("additional_data.csv")
+dane <- read_csv("BMI_real.csv")
+
+# Przetwórz dane
+obesity_trends <- additional_data %>%
+  mutate(is_obese = ifelse(BMI >= 30, 1, 0)) %>%
+  group_by(country, year) %>%
+  summarise(obesity_rate = mean(is_obese, na.rm = TRUE) * 100, .groups = 'drop')
+
+bmi_trend <- additional_data %>%
+  group_by(country, year) %>%
+  summarise(mean_BMI = mean(BMI, na.rm = TRUE), .groups = 'drop')
+
+# Definiowanie UI
+ui <- fluidPage(
+  titlePanel("Dashboard BMI i Otyłości"),
+  sidebarLayout(
+    sidebarPanel(
+      p("Dashboard przedstawia różne analizy dotyczące BMI i otyłości w wybranych krajach."),
+      uiOutput("opisWykresu")
+    ),
+    mainPanel(
+      tabsetPanel(
+         id = "tabs",
+        tabPanel("Trend otyłości (BMI ≥ 30) symulacja", plotOutput("obesityTrend")),
+        tabPanel("Trend średniego BMI w czasie symulacja", plotOutput("meanBmiTrend")),
+        tabPanel("Procentowy udział kategorii BMI", plotOutput("bmiCategories")),
+        tabPanel("Średnie BMI w czasie (dane WHO)", plotOutput("mean1")),
+        tabPanel("BMI (WHO vs symulacja)",
+                 plotOutput("mean2")),
+        tabPanel("BMI (WHO vs symulacja) - wizualizacja różnic w czasie", plotOutput("mean3")),
+        tabPanel("BMI (WHO vs symulacja) - obszar różnic", plotOutput("mean3")),
+        
+        # Nowa zakładka z filtrem krajów i wykresem
+        tabPanel("Średnie BMI wg krajów",
+          sidebarLayout(
+            sidebarPanel(
+              checkboxGroupInput(
+                inputId = "selected_countries",
+                label = "Wybierz kraj(e):",
+                choices = unique(additional_data$country),
+                selected = unique(additional_data$country)
+              )
+            ),
+            mainPanel(
+              plotOutput("bmi_plot")
+            )
+          )
+        )
+      )
+    )
+  )
+)
+
+
+# Definiowanie serwera
+server <- function(input, output) {
+  output$opisWykresu <- renderUI({
+  active_tab <- input$tabs  # musisz nazwać tabsetPanel: id = "tabs"
+  
+  tekst_opisu <- switch(active_tab,
+    "Trend otyłości" = "Wykres przedstawia zmiany w odsetku osób z otyłością (BMI ≥ 30) w czasie.",
+    "Trend średniego BMI" = "Wykres pokazuje trend średniego BMI dla wybranych krajów na przestrzeni lat.",
+    "Procentowy udział kategorii BMI" = "Wizualizacja udziału poszczególnych kategorii BMI (np. otyłość, niedowaga) w każdym kraju.",
+    "BMI REAL" = "Trend średniego BMI wg danych rzeczywistych (WHO) dla wybranych krajów.",
+    "REAL 1" = "Porównanie trendów średniego BMI: dane WHO (rzeczywiste) vs dane sztuczne.",
+    "REAL 2" = "Różnica średniego BMI (WHO - sztuczne) w czasie.",
+    "REAL 3" = "Wizualizacja różnic między BMI rzeczywistym i sztucznym – obszar różnicy (ribbon plot).",
+    "Średnie BMI w czasie dla wybranych krajów" = "Interaktywny wykres pokazujący zmiany średniego BMI na przestrzeni lat dla wybranych krajów.",
+    "Wybierz wykres po lewej, aby zobaczyć opis."
+  )
+  
+  HTML(paste("<b>Opis wykresu:</b><br>", tekst_opisu))
+})
+
+  
+  # Wykres 1: Trend otyłości (BMI ≥ 30) w czasie dla wybranych krajów - Symulacja
+
+  output$obesityTrend <- renderPlot({
+    ggplot(obesity_trends, aes(x = year, y = obesity_rate, color = country)) +
+      geom_smooth(method = "lm", se = FALSE, size = 1.3) +  # tylko linie trendu
+      labs(
+        title = "Trend otyłości (BMI ≥ 30) w czasie",
+        subtitle = "Odsetek osób z otyłością w wybranych krajach (1925–2025)",
+        x = "Rok",
+        y = "Odsetek osób z otyłością [%]",
+        color = "Kraj"
+      ) +
+      theme_minimal(base_size = 14)
+  })
+  
+
+  
+  #  Wykres 2: Trend średniego BMI w czasie  – regresja liniowa (symulacja)
+
+  output$meanBmiTrend <- renderPlot({
+    ggplot(bmi_trend, aes(x = year, y = mean_BMI, color = country)) +
+      geom_smooth(method = "lm", se = FALSE, size = 1.3) +
+      labs(
+        title = "Trend średniego BMI w czasie",
+        subtitle = "Dane dla wybranych krajów (1925–2025)",
+        x = "Rok",
+        y = "Średni BMI",
+        color = "Kraj"
+      ) +
+      theme_minimal()
+  })
+  
+  
+
+library(tidyverse)
+library(readr)
+
+# === Wczytanie danych ===
+
+# 1. WHO BMI data (BMI_real.csv)
+dane_real <- read_csv("BMI_real.csv")
+
+# 2. Sztuczne dane BMI (additional_data.csv) — cały w jednej kolumnie
+dane_additional_raw <- read_delim("additional_data.csv", delim = "\t", col_names = FALSE)
+
+# Rozdzielenie kolumn z pliku dodatkowego
+dane_additional <- dane_additional_raw %>%
+  separate(X1, into = c("id1", "id2", "id3", "year", "col5", "citizenship", "BMI", "col8", "col9"),
+           sep = "\t|,", extra = "merge", fill = "right") %>%
+  mutate(
+    BMI = str_replace(BMI, ",", "."),
+    BMI = as.numeric(BMI),
+    year = as.numeric(year)
+  )
+
+# === Mapowanie kodów krajów ===
+country_code_mapping <- tibble(
+  code_real = c("ESP", "GBR", "TJK", "USA", "ARE"),
+  code_additional = c("ES", "GB", "TJK", "US", "UAE"),
+  country_name = c("Hiszpania", "Wielka Brytania", "Tadżykistan", "USA", "Zjednoczone Emiraty Arabskie")
+)
+
+# === Oczyszczanie danych WHO ===
+dane_real_filtered <- dane_real %>%
+  filter(SpatialDimensionValueCode %in% country_code_mapping$code_real) %>%
+  mutate(
+    year = as.numeric(TimeDim),
+    BMI_real = as.numeric(NumericValue)
+  ) %>%
+  left_join(country_code_mapping, by = c("SpatialDimensionValueCode" = "code_real")) %>%
+  select(country_name, year, BMI_real) %>%
+  filter(!is.na(country_name), !is.na(BMI_real), !is.na(year))
+
+# === Oczyszczanie danych sztucznych ===
+dane_additional_filtered <- dane_additional %>%
+  filter(citizenship %in% country_code_mapping$code_additional) %>%
+  left_join(country_code_mapping, by = c("citizenship" = "code_additional")) %>%
+  group_by(country_name, year) %>%
+  summarise(BMI_additional = mean(BMI, na.rm = TRUE), .groups = "drop") %>%
+  filter(!is.na(country_name), !is.na(BMI_additional), !is.na(year))
+
+# === Połączenie danych ===
+dane_combined <- dane_real_filtered %>%
+  inner_join(dane_additional_filtered, by = c("country_name", "year")) %>%
+  mutate(difference = BMI_real - BMI_additional)
+
+
+output$mean2 <- renderPlot({
+  # 2. Różnica w średnim BMI — z gładką linią
+  ggplot(dane_combined, aes(x = year, y = difference)) +
+  geom_smooth(color = "purple", method = "loess", size = 1.2) +
+  facet_wrap(~ country_name) +
+  labs(
+    title = "Różnica w średnim BMI w czasie",
+    x = "Rok",
+    y = "Różnica BMI (Rzeczywiste - Sztuczne)"
+  ) +
+  theme_minimal()
+})
+
+output$mean3 <-renderPlot({
+  # 3. Obszar różnicy (ribbon) — z gładką linią
+ggplot(dane_combined, aes(x = year)) +
+  geom_ribbon(aes(ymin = pmin(BMI_real, BMI_additional), ymax = pmax(BMI_real, BMI_additional)),
+              fill = "blue", alpha = 0.3) +
+  geom_smooth(aes(y = BMI_real), method = "loess", color = "red", size = 1.2) +
+  geom_smooth(aes(y = BMI_additional), method = "loess", color = "green", size = 1.2, linetype = "dashed") +
+  facet_wrap(~ country_name) +
+  labs(
+    title = "Obszar różnicy między średnim BMI",
+    x = "Rok",
+    y = "BMI"
+  ) +
+  theme_minimal()
+})
+  # Wykres 5: Porównanie trendów średniego BMI (WHO vs symulacja)
+
+output$mean1 <- renderPlot({
+      # 1. Porównanie trendów BMI — z gładkimi liniami
+ggplot(dane_combined, aes(x = year)) +
+  geom_smooth(aes(y = BMI_real, color = "WHO"), method = "loess", size = 1.2) +
+  geom_smooth(aes(y = BMI_additional, color = "symulacja"), method = "loess", size = 1.2, linetype = "dashed") +
+  facet_wrap(~ country_name) +
+  labs(
+    title = "Porównanie trendów średniego BMI (WHO vs symulacja)",
+    x = "Rok",
+    y = "Średnie BMI",
+    color = "Źródło danych"
+  ) +
+  theme_minimal()
+  })
+  
+
+  #Wykres 4: Średnie BMI w czasie (dane WHO) – REALNE wartości
+
+output$meanBmiReal <- renderPlot({
+    
+
+# 1. Wczytanie danych
+dane <- read_csv("BMI_real.csv")  # <- zamień na prawdziwą nazwę pliku
+
+# 2. Filtrowanie i przygotowanie danych tylko dla wybranych krajów
+kraje_docelowe <- c("ESP", "GBR", "TJK", "USA", "ARE")
+
+bmi_trend <- dane %>%
+  filter(
+    SpatialDimensionValueCode %in% kraje_docelowe,
+    !is.na(NumericValue),
+    !is.na(TimeDim)
+  ) %>%
+  mutate(
+    rok = as.numeric(TimeDim),
+    kraj = case_when(
+      SpatialDimensionValueCode == "ESP" ~ "Hiszpania",
+      SpatialDimensionValueCode == "GBR" ~ "Wielka Brytania",
+      SpatialDimensionValueCode == "TJK" ~ "Tadżykistan",
+      SpatialDimensionValueCode == "USA" ~ "USA",
+      SpatialDimensionValueCode == "ARE" ~ "United Arab Emirates",
+      TRUE ~ SpatialDimensionValueCode
+    ),
+    BMI = as.numeric(NumericValue)
+  ) %>%
+  group_by(kraj, rok) %>%
+  summarise(mean_BMI = mean(BMI, na.rm = TRUE), .groups = 'drop')
+
+# 3. Tworzenie wykresu trendu BMI
+ggplot(bmi_trend, aes(x = rok, y = mean_BMI, color = kraj)) +
+  geom_smooth(method = "lm", se = FALSE, linewidth = 1.3) +
+  labs(
+    title = "Średnie BMI w czasie (dane WHO)",
+    subtitle = "Dla wybranych krajów: ESP, GB, TJK, USA, ARE",
+    x = "Rok",
+    y = "Średni BMI",
+    color = "Kraj"
+  ) +
+  theme_minimal()
+
+  })
+  
+
+
 # Wczytaj dane
 additional_data <- read_csv("additional_data.csv")
 # Dodaj kolumnę z kategorią BMI
@@ -84,6 +341,7 @@ additional_data <- additional_data %>%
     BMI >= 25 & BMI < 30 ~ "Nadwaga",
     BMI >= 30 ~ "Otyłość"
   ))
+
 ui <- fluidPage(
   titlePanel("Średnie BMI w czasie dla wybranych krajów"),
   sidebarLayout(
@@ -135,23 +393,66 @@ server <- function(input, output) {
       ) +
       theme_minimal()
   })
+
 }
 shinyApp(ui = ui, server = server)
+
+
+
+  # Wykres 3: Procentowy udział poszczególnych kategorii BMI w populacji każdego kraju symulacja
+
+  output$bmiCategories <- renderPlot({
+    bmi_counts <- additional_data %>%
+      mutate(BMI_category = case_when(
+        BMI < 18.5 ~ "Niedowaga",
+        BMI >= 18.5 & BMI < 25 ~ "Prawidłowa",
+        BMI >= 25 & BMI < 30 ~ "Nadwaga",
+        BMI >= 30 ~ "Otyłość"
+      )) %>%
+      group_by(country, BMI_category) %>%
+      summarise(count = n(), .groups = 'drop')
+    
+    bmi_percentages <- bmi_counts %>%
+      group_by(country) %>%
+      mutate(
+        percentage = count / sum(count) * 100,
+        label = paste0(round(percentage, 1), "%")
+      ) %>%
+      ungroup()
+    
+    ggplot(bmi_percentages, aes(x = country, y = percentage, fill = BMI_category)) +
+      geom_bar(stat = "identity", position = "stack") +
+      geom_text(aes(label = label), position = position_stack(vjust = 0.5), color = "black", size = 3) +
+      labs(
+        title = "Procentowy udział kategorii BMI w populacji każdego kraju",
+        x = "Kraj",
+        y = "Procent populacji",
+        fill = "Kategoria BMI"
+      ) +
+      theme_minimal()
+  })
+}
+
+# Uruchomienie aplikacji
+shinyApp(ui = ui, server = server)
+
+
+
 ```
 
-
-
-UAE PLOT{data-icon="fa-list"} =====================================
-###Data
-Sidebar {.sidebar}
+UAE PLOT{data-icon="fa-map"} 
+========================================================================
+Column {data-width=300}
 -----------------------------------------------------------------------
+### Data
+
+
 ```{r}
 selectInput("selected_plot", "Choose a plot:",
             choices = names(plots_list),
             selected = names(plots_list)[1])
 ```
-Column {data-width=300}
------------------------------------------------------------------------
+
 ```{r}
 plotOutput("plot")
 output$plot <- renderPlot({
@@ -159,5 +460,357 @@ output$plot <- renderPlot({
   plots_list[[input$selected_plot]]()
 })
 ```
-------------------------------------------------------
 
+EDUCATION PLOT{data-icon="fa-graduation-cap"}
+=====================================
+
+Column {data-width=700}
+-----------------------------------------------------------------------
+
+### Trend edukacji 
+
+```{r}
+
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(plotly)
+
+# Wczytaj dane
+additional_data <- read_csv("additional_data.csv")
+
+education_rates <- additional_data %>%
+    mutate(
+      has_any_education = case_when(
+        age < 3 ~ FALSE,
+        between(age, 3, 5) & (education == 0 | education == "None") ~ FALSE, 
+        education %in% c(0, "None") ~ FALSE, 
+        education >= 1 & education <= 8 ~ TRUE,  
+        TRUE ~ NA                     
+      )
+    ) %>%
+    group_by(country, year) %>%
+    summarise(
+      education_rate = mean(has_any_education, na.rm = TRUE) * 100,
+      .groups = 'drop'
+    ) %>%
+    arrange(country, year)
+
+
+higher_education_rates <- additional_data %>%
+  mutate(
+    has_higher_ed = education %in% c(5, 6, 7, 8)
+  ) %>%
+  group_by(country) %>%
+  summarise(
+    higher_ed_rate = mean(has_higher_ed, na.rm = TRUE) * 100,
+    .groups = 'drop'
+  ) %>%
+  arrange(desc(higher_ed_rate))
+
+
+education_trend_change <- education_rates %>%
+  group_by(country) %>%
+  arrange(year) %>%
+  mutate(rate_change = (education_rate - lag(education_rate)) / lag(education_rate) * 100) %>%
+  filter(!is.na(rate_change))
+
+
+extreme_points <- education_trend_change %>%
+  group_by(country) %>%
+  summarise(
+    max_year = year[which.max(rate_change)],
+    max_value = max(rate_change, na.rm = TRUE),
+    min_year = year[which.min(rate_change)],
+    min_value = min(rate_change, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  pivot_longer(cols = c(max_year, min_year, max_value, min_value),
+               names_to = c("type", ".value"),
+               names_pattern = "(max|min)_(year|value)") %>%
+  mutate(type = ifelse(type == "max", "Wzrost", "Spadek"))
+
+
+ui_education <- fluidPage(
+  titlePanel("Dashboard edukacji"),
+  sidebarLayout(
+    sidebarPanel(
+      p("Dashboard przedstawia analizy edukacji w społeczeństwie oraz jak wygląda nauka w wybranych krajach na przestrzeni lat."),
+      uiOutput("education_plot_description")
+    ),
+    mainPanel(
+      tabsetPanel(
+        id = "educationTabs",
+        tabPanel("Trend edukacji na przestrzeni lat w wybranych krajach", plotOutput("education_trend_plot")),
+        tabPanel("Procentowy udział wyedukowanego społeczeństwa w każdym kraju", plotOutput("education_bar_plot")),
+        tabPanel("Zainteresowanie edukacją na przestrzeni lat", plotlyOutput("education_change_plot", height = "600px")),
+        tabPanel("Czy obcokrajowcy są bardziej wyedukowani niż rodowici mieszkańcy?", plotOutput("education_by_citizenship_plot")),
+        tabPanel("Porównanie średniego wskaźnika edukacji",
+                 selectInput(
+                            inputId = "selected_country",
+                            label = "Wybierz kraj:",
+                            choices = c("ALL_COUNTRIES", sort(unique(additional_data$country))),
+                            selected = "ALL_COUNTRIES", multiple = TRUE),
+                 plotlyOutput("avg_education_comparison_plot", height = "600px"))
+        # tabPanel("Porównanie danych z prawdziwymi", plotOutput("mean4"))
+      )
+    )
+  )
+)
+
+
+# Server logic dla dashboardu edukacji
+server_education <- function(input, output) {
+  
+# Opisy wykresów
+output$education_plot_description <- renderUI({
+    active_tab <- input$educationTabs
+    description <- switch(active_tab,
+      "Trend edukacji na przestrzeni lat w wybranych krajach" = 
+        "Wykres przedstawia zmiany w odsetku populacji posiadającej co najmniej podstawowe wykształcenie w wybranych krajach w latach 1925–2025. Linie łączące punkty reprezentują rzeczywiste dane dla każdego kraju, umożliwiając łatwe porównania między narodami i wykrywanie długoterminowych trendów edukacyjnych. Dane uwzględniają osoby w wieku szkolnym i dorosłych z edukacją podstawową i wyższą.",
+      
+      "Procentowy udział wyedukowanego społeczeństwa w każdym kraju" = 
+        "Wykres słupkowy pokazujący procent populacji z wyższym wykształceniem w każdym z analizowanych krajów. Umożliwia szybkie porównanie poziomu edukacji wyższej pomiędzy krajami.",
+      
+      "Zainteresowanie edukacją na przestrzeni lat" = 
+        "Wizualizacja przedstawiająca dynamikę zmian w dostępie do edukacji. Wykres pokazuje stosunek wskaźników między kolejnymi latami, uwidaczniając okresy największego rozwoju.",
+      
+      "Czy obcokrajowcy są bardziej wyedukowani niż rodowici mieszkańcy?" = 
+        "Porównanie poziomu wykształcenia imigrantów i lokalnej populacji. Wykres pudełkowy przedstawia rozkład wskaźników edukacji dla obu grup.",
+      
+      "Porównanie średniego wskaźnika edukacji" = 
+        "Wykres przedstawia średni poziom edukacji (w skali 0–8) w poszczególnych krajach w czasie. Dodatkowo zawiera linię przerywaną reprezentującą globalną średnią, co umożliwia porównanie, które kraje znajdują się powyżej lub poniżej światowego trendu.",
+      
+      # "6. Walidacja danych" = 
+      #   "Weryfikacja jakości danych poprzez porównanie z oficjalnymi statystykami. Wykres punktowy pokazuje stopień zgodności naszych danych ze źródłami referencyjnymi."
+
+    
+    HTML(paste("<b>Opis wykresu: </b><br>", description))
+  )})
+  
+# 1 -- Wykres trendów edukacji
+output$education_trend_plot <- renderPlot({
+
+  ggplot(education_rates, aes(x = year, y = education_rate, color = country)) +
+    geom_line(size = 1, aes(group = country)) +              # linie krajów
+    geom_point(size = 2.5, shape = 16) +                     # kropki dla krajów
+    scale_y_continuous(limits = c(0, 100), name = "Odsetek populacji [%]") +
+    scale_x_continuous(breaks = pretty(education_rates$year, n = 10), name = "Rok") +
+    labs(
+      title = "Zmiany poziomu edukacji w czasie",
+      subtitle = "Odsetek osób z co najmniej podstawowym wykształceniem (1925–2025)",
+      color = "Kraj"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      legend.position = "bottom",
+      plot.title = element_text(face = "bold"),
+      axis.title = element_text(face = "bold"),
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    )
+})
+
+# 2 -- Procentowy udział wyedukowanego społeczeństwa w każdym kraju
+output$education_bar_plot <- renderPlot({
+  ggplot(higher_education_rates, aes(x = reorder(country, -higher_ed_rate), y = higher_ed_rate, fill = country)) +
+    geom_col(width = 0.6) +
+    geom_text(aes(label = sprintf("%.1f%%", higher_ed_rate)), vjust = -0.5, size = 5) +
+    labs(
+      title = "Udział populacji z wyższym wykształceniem",
+      subtitle = "Procent populacji z wykształceniem co najmniej licencjackim, według kraju",
+      x = "Kraj",
+      y = "Odsetek [%]"
+    ) +
+    scale_y_continuous(limits = c(0, 100), expand = c(0, 0)) +
+    theme_minimal(base_size = 14) +
+    theme(
+      legend.position = "none",
+      plot.title = element_text(face = "bold"),
+      plot.subtitle = element_text(margin = margin(b = 10))
+    )
+})
+
+# 3 -- Zainteresowanie edukacją na przestrzeni lat
+output$education_change_plot <- renderPlotly({
+
+  p <- ggplot(education_trend_change, aes(x = year, y = rate_change, color = country)) +
+    geom_line(size = 1) +
+    geom_point(size = 2) +
+
+    # Linia odniesienia
+    geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+
+    # Punkty ekstremalne
+    geom_point(data = extreme_points,
+               aes(x = year, y = value, shape = type),
+               size = 2.5, fill = ifelse(extreme_points$type == "Wzrost", "forestgreen", "firebrick"),
+               color = "black", stroke = 1.1, inherit.aes = FALSE) +
+
+    geom_text(data = extreme_points,
+              aes(x = year, y = value, label = paste0(type, ": ", round(value, 1), "%")),
+              vjust = 3,
+              # vjust = ifelse(extreme_points$type == "Wzrost", -1.5, 2),
+              size = 3, fontface = "bold", color = "black", inherit.aes = FALSE) +
+
+    scale_x_continuous(
+      name = "Rok",
+      breaks = seq(min(education_trend_change$year), max(education_trend_change$year), by = 2),
+      expand = expansion(mult = c(0.01, 0.03))
+    ) +
+    scale_y_continuous(
+      name = "Zmiana rok do roku [%]",
+      breaks = scales::pretty_breaks(n = 10)
+    ) +
+    scale_shape_manual(values = c("Wzrost" = 24, "Spadek" = 25)) +
+
+    labs(
+      title = "Zmiany wskaźnika edukacji rok do roku",
+      subtitle = "Kropki pokazują kraje, zaznaczono największe wzrosty i spadki",
+      color = "Kraj",
+      shape = "Ekstremum"
+    ) +
+
+    theme_minimal(base_size = 14) +
+    theme(
+      legend.position = "bottom",
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(face = "bold"),
+      plot.subtitle = element_text(margin = margin(b = 10)),
+      panel.grid.minor.x = element_blank()
+    )
+
+  ggplotly(p, tooltip = c("x", "y", "color")) %>%
+    layout(legend = list(orientation = "h", x = 0.1, y = -0.2))
+})
+
+# 4 -- Czy obcokrajowcy są bardziej wyedukowani niż rodowici mieszkańcy?
+
+output$education_by_citizenship_plot <- renderPlot({
+  edu_summary <- additional_data %>%
+    filter(!is.na(education), !is.na(citizenship), !is.na(country)) %>%
+    mutate(
+      is_high_edu = education %in% 5:8,
+      citizenship = factor(citizenship, levels = c(1, 0), labels = c("Obywatel", "Obcokrajowiec"))
+    ) %>%
+    group_by(country, citizenship) %>%
+    summarise(
+      percentage = mean(is_high_edu, na.rm = TRUE) * 100,
+      .groups = "drop"
+    )
+
+  ggplot(edu_summary, aes(x = country, y = percentage, fill = citizenship)) +
+    geom_bar(stat = "identity", position = position_dodge(width = 0.7), width = 0.6) +
+    geom_text(aes(label = paste0(round(percentage, 1), "%")),
+              position = position_dodge(width = 0.7), vjust = -0.5, size = 3.5) +
+    labs(
+      title = "Odsetek osób z wyższym wykształceniem w podziale na obywatelstwo",
+      subtitle = "Porównanie obcokrajowców i obywateli w każdym kraju",
+      x = "Kraj",
+      y = "Odsetek [%]",
+      fill = "Grupa"
+    ) +
+    scale_fill_manual(values = c("Obywatel" = "blue", "Obcokrajowiec" = "green")) +
+    scale_y_continuous(limits = c(0, 100), expand = expansion(mult = c(0, 0.1))) +
+    theme_minimal(base_size = 14) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+})
+
+# 5 -- Porównanie średniego wskaźnika edukacji
+
+output$avg_education_comparison_plot <- renderPlotly({
+  additional_data <- additional_data %>%
+    mutate(
+      education = case_when(
+        education == "None" ~ 0,
+        TRUE ~ as.numeric(education)
+      )
+    )
+
+  global_avg_education <- additional_data %>%
+    filter(!is.na(education)) %>%
+    group_by(year) %>%
+    summarise(global_avg = mean(education), .groups = "drop") %>%
+    mutate(global_avg = (global_avg / 8) * 100)
+
+  # Tylko dane dla wybranych krajów
+  filtered_data <- additional_data %>%
+    filter(country %in% input$selected_country)
+  
+  avg_education_over_time <- filtered_data %>%
+    filter(!is.na(education)) %>%
+    group_by(country, year) %>%
+    summarise(avg_education = mean(education), .groups = "drop") %>%
+    mutate(avg_education = (avg_education / 8) * 100)
+  
+
+  # Połączenie – dodanie globalnej średniej do danych krajowych
+  data_combined <- avg_education_over_time %>%
+    left_join(global_avg_education, by = "year") %>%
+    mutate(diff = avg_education - global_avg)
+  
+  selected_countries <- input$selected_country
+
+  # Wykres
+
+   # Sprawdzenie, czy użytkownik wybrał ALL_COUNTRIES
+  if ("ALL_COUNTRIES" %in% selected_countries) {
+    
+    avg_education_all <- additional_data %>%
+      filter(!is.na(education)) %>%
+      group_by(country, year) %>%
+      summarise(avg_education = mean(education), .groups = "drop") %>%
+      mutate(avg_education = (avg_education / 8) * 100) %>%
+      left_join(global_avg_education, by = "year") %>%
+      mutate(diff = avg_education - global_avg)
+
+    p <- ggplot(avg_education_all, aes(x = year, y = avg_education, color = country)) +
+      geom_line(size = 1) +
+      geom_point(size = 1.5) +
+      geom_line(data = global_avg_education, aes(x = year, y = global_avg),
+                color = "black", linetype = "dashed", size = 1, inherit.aes = FALSE) +
+      scale_y_continuous(labels = scales::percent_format(scale = 1), limits = c(0, 100), breaks = seq(0, 100, by = 10)) + 
+      scale_x_continuous(breaks = seq(min(avg_education_all$year), max(avg_education_all$year), by = 2)) +
+      labs(
+        title = "Średni poziom edukacji we wszystkich krajach",
+        subtitle = "Każdy kraj innym kolorem, przerywana linia = średnia globalna",
+        x = "Rok",
+        y = "Średni poziom edukacji [%]",
+        color = "Kraj"
+      ) +
+      theme_minimal(base_size = 14) +
+      theme(
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        plot.title = element_text(face = "bold")
+      )
+  } else {
+    # ✅ Dla wybranych krajów – osobne wykresy
+    p <- ggplot(data_combined, aes(x = year, y = avg_education)) +
+      geom_line(color = "#1f77b4", size = 1.2) +
+      geom_point(color = "#1f77b4", size = 2) +
+      geom_line(data = global_avg_education, aes(x = year, y = global_avg),
+                color = "black", linetype = "dashed", size = 1, inherit.aes = FALSE) +
+      facet_wrap(~country) +
+       scale_y_continuous(labels = scales::percent_format(scale = 1), limits = c(0, 100), breaks = seq(0, 100, 10)) +
+      scale_x_continuous(breaks = seq(min(data_combined$year), max(data_combined$year), by = 2)) +
+      labs(
+        title = "Średni poziom edukacji w wybranych krajach",
+        subtitle = "Przerywana linia: globalna średnia edukacji",
+        x = "Rok",
+        y = "Średni poziom edukacji [%]"
+      ) +
+      theme_minimal(base_size = 14) +
+      theme(
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        plot.title = element_text(face = "bold"),
+        strip.text = element_text(size = 12)
+      )
+  }
+  ggplotly(p, tooltip = c("x", "y")) %>%layout(hovermode = "x unified")
+})
+}
+
+
+shinyApp(ui = ui_education, server = server_education)
+
+```
