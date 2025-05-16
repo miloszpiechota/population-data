@@ -1,0 +1,13 @@
+name: population_dash
+title: population_dash
+username: miloszpiechota
+account: miloszpiechota
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 14766347
+bundleId: 10292782
+url: https://miloszpiechota.shinyapps.io/population_dash/
+version: 1
+asMultiple: TRUE
+asStatic: FALSE
+ignoredFiles: Plots/plots_UAE.R|population_ES_UAE.R|old_population_dash.Rmd
